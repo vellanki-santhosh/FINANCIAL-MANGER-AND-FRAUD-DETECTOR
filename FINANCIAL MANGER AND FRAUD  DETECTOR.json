@@ -1,0 +1,286 @@
+{
+  "name": "FIANCÉ MANGER AND FRAUD  DETECTOR",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "name": "1. Trigger: New Transaction Email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        60
+      ],
+      "id": "712f246b-774f-41b4-a07b-5122c7f648a6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bBTPAqJo8A9AiOyt",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// This node extracts details from the bank SMS text.\n// You MIGHT need to adjust the text patterns below to match YOUR bank's SMS format.\n\n// --- ADJUST THESE PATTERNS IF NEEDED ---\n// Tries to find amount like \"Rs. 500.00\" or \"INR 500\"\nconst amountRegex = /(?:Rs\\.?|INR)\\s*(\\d+\\.?\\d*)/;\n// Tries to find the merchant name after words like \"at\" or \"to\"\nconst merchantRegex = /(?:at|to)\\s(.*?)\\s*(?:\\.|on|Avbl Bal)/;\n// Tries to find a Transaction ID, often alphanumeric\nconst txIdRegex = /(?:Ref No|Txn ID)\\s*([a-zA-Z0-9]+)/;\n// --- END OF ADJUSTMENT AREA ---\n\nreturn $input.all().map(item => {\n  const smsText = item.json.text;\n  const amountMatch = smsText ? smsText.match(amountRegex) : null;\n  const merchantMatch = smsText ? smsText.match(merchantRegex) : null;\n  const txIdMatch = smsText ? smsText.match(txIdRegex) : null;\n  return {\n    amount: amountMatch ? parseFloat(amountMatch[1]) : 'Not Found',\n    merchant: merchantMatch ? merchantMatch[1].trim() : 'Not Found',\n    transactionId: txIdMatch ? txIdMatch[1] : 'Not Found',\n    originalText: smsText || 'No SMS Text Provided'\n  };\n});"
+      },
+      "name": "2. Parse SMS Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1060,
+        -180
+      ],
+      "id": "cae4362a-a3c0-4fc2-bbd7-d3ae547176d8"
+    },
+    {
+      "parameters": {
+        "url": "https://api-inference.huggingface.co/models/deepset/roberta-base-squad2",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "huggingFaceApi",
+        "options": {}
+      },
+      "name": "3. AI Fraud Analysis (Hugging Face)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -780,
+        80
+      ],
+      "id": "8b896144-dae1-4f18-822e-1bb17f4ca6c3",
+      "credentials": {
+        "huggingFaceApi": {
+          "id": "pAtYAH0PRInB17ui",
+          "name": "HuggingFaceApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "spreadsheet",
+        "title": "MY TRANCATIONS ",
+        "sheetsUi": {
+          "sheetValues": [
+            {
+              "title": "SHT1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "4. Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -420,
+        -200
+      ],
+      "id": "50e03b9d-2155-4e3b-81c5-4d493f679567",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1wPkATFN6Qd8HPgg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $('3. AI Fraud Analysis (Hugging Face)').item.json.score }}",
+              "operation": "larger",
+              "value2": "0.8"
+            }
+          ]
+        }
+      },
+      "name": "5. Is Fraud Score > 80%?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -360,
+        40
+      ],
+      "id": "41d1f33e-c2a8-4811-8aa7-ca84f7f47ee0"
+    },
+    {
+      "parameters": {
+        "sendTo": "vellanki07@gmail.com",
+        "subject": "High-Risk Transaction Alert!",
+        "message": "A transaction has been flagged by your  monitor as potentially fraudulent. Please review immediately. Risk Score: 100/ 100 AI Reason: T09aaISZHciMjMcP6fau6QM --- Transaction Details --- Merchant: CryptoWallet Top-up Amount: Rs. --- Original SMS Text --- {   \"transaction_date\": \"\",   \"merchant\": \"CryptoWallet Top-up\",   \"transaction_amount\": 499.99,   \"timestamp\": \"\",   \"fraud_score\": 100 } comes from your Parse JSON step. iQ7PRoF0fCstOYvc0Qyf0mUXxKV4VwJI comes from your Parse JSON step.  is the Merchant from your second Formatter step.  is the Amount from your first Formatter step./499.99  is the original, raw text from the Gmail Trigger./URGENT: Suspicious Login and Payment of $499.99  We detected a login from a new device and a payment of $499.99 to \"CryptoWallet Top-up\". If this was NOT you, you must click here to cancel the payment imediatly: [ http://secure-totally-not-a-scam-site.com/cancel]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        60,
+        -20
+      ],
+      "id": "23b62085-c9d3-4074-8596-099febffe4d0",
+      "name": "Send a message",
+      "webhookId": "031411f2-f892-47b5-94f7-b1b7f486018e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bBTPAqJo8A9AiOyt",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "**WELCOME TO THE AUTOMATED FINANCIAL WATCHDOG!**\n\nThis workflow provides a complete, automated system for tracking and analyzing bank transactions.\n\n**How it works:**\n1.  **Triggers** when a new bank transaction email arrives.\n2.  **Analyzes** the email text with AI to extract data and calculate a fraud score.\n3.  **Logs** every single transaction to a Google Sheet for dashboarding.\n4.  **Alerts** you via email if a transaction is flagged as high-risk.",
+        "height": 320,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1460,
+        260
+      ],
+      "id": "054ec426-6eb2-4c17-9429-cb654af0e124",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "🎯 **TRIGGER: New Transaction Email**\n\nThis is the starting point. The workflow kicks off the moment a new email lands in our dedicated transaction inbox.\n\n🔑 **CRITICAL SETTING:**\nCheck the **Filters** in the options. It should be configured to only trigger on emails from a specific bank sender (e.g., `alerts@yourbank.com`). This is crucial to prevent the workflow from running on your personal emails.",
+        "height": 340,
+        "width": 440,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        -580
+      ],
+      "id": "5eb34454-8d4d-4310-98c0-a4e214c06194",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "🧠 **THE AI BRAIN: Extraction & Analysis**\n\nThis is the most important step. It takes the raw email text and sends it to the AI.\n\nIt has two jobs:\n1.  **EXTRACT:** Pull out key data like Amount, Merchant, and Transaction ID.\n2.  **ANALYZE:** Calculate a `fraud_score` from 0-100 and provide a reason.\n\n➡️ **OUTPUT:**\nThis node MUST return a clean **JSON object**. The next steps (Google Sheets and the IF node) depend on this exact format to work correctly.",
+        "height": 340,
+        "width": 420,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -940,
+        260
+      ],
+      "id": "e45e111e-555b-45c2-86f3-aa068121cedc",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "📊 **DATA LOGGING & DECISION**\n\n**1. Google Sheets - The Permanent Record:**\nThis node takes the structured JSON data from the AI and appends a new row to our Google Sheet. This happens for **EVERY** transaction, creating a full financial history for our dashboard.\n\n**2. IF Node - The Gatekeeper:**\nThis node checks the `fraud_score` from the AI.\n- If the score is **low**, the workflow stops here.\n- If the score is **high** (e.g., > 80), it proceeds down the \"TRUE\" path to send an alert.\n\n🔧 **TO EDIT:** You can change the risk threshold by editing the number in \"Value 2\" of the IF node.",
+        "height": 340,
+        "width": 460,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -580,
+        -600
+      ],
+      "id": "f937cbe8-6e2a-471c-995c-f579e1059308",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "🚨 **THE ALERT: High-Risk Notification**\n\nThis final step only runs for transactions that the IF node flagged as high-risk.\n\nIt sends a formatted warning email to your primary address, letting you know that a potentially fraudulent payment has been detected.\n\n✍️ **CUSTOMIZE:**\nYou can easily edit the subject and body of this alert email. Use the variables from the previous nodes to include dynamic details like the merchant name, amount, and the AI's fraud score in your message!",
+        "height": 300,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        160
+      ],
+      "id": "de81d92a-0c3e-4c5c-8d22-26e823b4b3f1",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "1. Trigger: New Transaction Email": {
+      "main": [
+        [
+          {
+            "node": "2. Parse SMS Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Parse SMS Text": {
+      "main": [
+        [
+          {
+            "node": "3. AI Fraud Analysis (Hugging Face)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. AI Fraud Analysis (Hugging Face)": {
+      "main": [
+        [
+          {
+            "node": "4. Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "5. Is Fraud Score > 80%?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Is Fraud Score > 80%?": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "600508b4-3313-4e34-aca0-571400c5e8c9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a48a8dc8b3a6075b1ce9714bf3b68b3cc047720dd68341c63f6edf5b64ea40f5"
+  },
+  "id": "qpv36srindAwin2v",
+  "tags": []
+}
