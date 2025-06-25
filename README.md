@@ -5,7 +5,7 @@ FINANCIAL MANGER AND FRAUD  DETECTOR
 ![n8n](https://img.shields.io/badge/n8n-Workflow_Automation-7722FF?style=for-the-badge)
 ![AI](https://img.shields.io/badge/AI_Powered-Gemini_/_Mistral-4285F4?style=for-the-badge)
 ![Google Sheets](https://img.shields.io/badge/Google_Sheets-Logging-34A853?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
+
 
 An intelligent, end-to-end n8n workflow that automatically tracks your bank transactions, analyzes them for fraud using AI, logs them for a complete financial overview, and sends you real-time alerts for high-risk activity.
 
